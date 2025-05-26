@@ -30,5 +30,8 @@ dotenv = "0.15.0"
 spl-associated-token-account = "4.0.0"
 rustls = "0.21.12"
 
+[patch.crates-io]
+rustls = { version = "0.21.12" } # Force reqwest to use rustls 0.21.12
+
 [features]
 default = []
