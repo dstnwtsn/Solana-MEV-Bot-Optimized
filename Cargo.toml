@@ -4,12 +4,12 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-solana-sdk = "1.18.15"
-solana-client = "1.18.15"
-solana-program = "1.18.15"
-solana-account-decoder = "1.18.15"
-solana-pubsub-client = "1.18.15"
-solana-transaction-status = "1.18.15"
+solana-sdk = "1.18.26" # Upgraded
+solana-client = "1.18.26" # Upgraded
+solana-program = "1.18.26" # Upgraded
+solana-account-decoder = "1.18.26" # Upgraded
+solana-pubsub-client = "1.18.26" # Upgraded
+solana-transaction-status = "1.18.26" # Upgraded
 anchor-client = "0.30.1"
 anchor-lang = "0.30.1"
 anchor-spl = "0.30.1"
@@ -22,13 +22,13 @@ env_logger = "0.11.5"
 anyhow = "1.0.91"
 futures = "0.3.31"
 rust_socketio = "0.5.0"
-reqwest = { version = "0.12.8", features = ["json", "rustls-tls"], default-features = false } # Use rustls-tls
+reqwest = { version = "0.12.9", features = ["json", "rustls-tls"], default-features = false } # Upgraded
 mongodb = "3.1.0"
 strum = { version = "0.26", features = ["derive"] }
 itertools = "0.13"
 dotenv = "0.15.0"
 spl-associated-token-account = "4.0.0"
-rustls = "0.21.12" # Downgraded to resolve zeroize conflict
+rustls = "0.23.27" # Kept for previous fix
 
 [features]
 default = []
