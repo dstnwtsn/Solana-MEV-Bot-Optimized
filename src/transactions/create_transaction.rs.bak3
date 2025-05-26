@@ -28,7 +28,7 @@ use anyhow::Result;
 use spl_associated_token_account::{get_associated_token_address, instruction::create_associated_token_account};
 use std::{fs::File, io::BufReader, path::Path, sync::Arc};
 
-use crate::common::constants::Env;
+use crate::common::config::Config;
 use crate::common::utils::from_str;
 use crate::transactions::{
     meteoradlmm_swap::{construct_meteora_instructions, SwapParametersMeteora},
@@ -38,14 +38,14 @@ use crate::transactions::{
 pub async fn create_and_send_swap_transaction(simulate_or_send: SendOrSimulate, chain: ChainType, transaction_infos: SwapPathResult) -> Result<()> {
     info!("🔄 Create swap transaction.... ");
     
-    let env = Env::new();
+    let config = Config::load();
     let rpc_url = match chain {
-        ChainType::Mainnet => env.rpc_url_tx.clone(),
-        ChainType::Devnet => env.devnet_rpc_url.clone(),
+        ChainType::Mainnet => config.rpc_url.clone(),
+        ChainType::Devnet => "https://api.devnet.solana.com".to_string(), // Hardcoded for Devnet
     };
     let rpc_client = RpcClient::new(rpc_url);
 
-    let payer = read_keypair_file(&env.payer_keypair_path).expect("Wallet keypair file not found");
+    let payer = read_keypair_file("~/.config/solana/id.json").expect("Wallet keypair file not found");
     info!("💳 Wallet {:?}", payer.pubkey());
 
     info!("🆔 Create/Send Swap instruction....");
@@ -145,7 +145,7 @@ pub async fn create_and_send_swap_transaction(simulate_or_send: SendOrSimulate, 
     instructions[1] = compute_budget_ix;
 
     if simulate_or_send == SendOrSimulate::Send {
-        let transaction_config = RpcSendTransactionConfig {
+        let transaction_config: RpcSendTransactionConfig = RpcSendTransactionConfig {
             skip_preflight: true,
             preflight_commitment: Some(CommitmentLevel::Confirmed),
             encoding: Some(UiTransactionEncoding::Base58),
@@ -153,7 +153,7 @@ pub async fn create_and_send_swap_transaction(simulate_or_send: SendOrSimulate, 
             min_context_slot: None,
         };
  
-        let new_payer = read_keypair_file(&env.payer_keypair_path).expect("Wallet keypair file not found");
+        let new_payer: Keypair = read_keypair_file("~/.config/solana/id.json").expect("Wallet keypair not found");
         let txn = VersionedTransaction::try_new(
             VersionedMessage::V0(v0::Message::try_compile(
                 &new_payer.pubkey(),
@@ -164,7 +164,7 @@ pub async fn create_and_send_swap_transaction(simulate_or_send: SendOrSimulate, 
             &[&new_payer],
         )?;
         
-        let non_blocking_rpc_client = solana_client::nonblocking::rpc_client::RpcClient::new(env.rpc_url_tx.clone());
+        let non_blocking_rpc_client = solana_client::nonblocking::rpc_client::RpcClient::new(config.rpc_url.clone());
         let arc_rpc_client = Arc::new(non_blocking_rpc_client);
         let connection_cache = ConnectionCache::new_quic("connection_cache_cli_program_quic", 1);
         let signer: [Arc<dyn Signer>; 1] = [Arc::new(new_payer)];
@@ -173,7 +173,7 @@ pub async fn create_and_send_swap_transaction(simulate_or_send: SendOrSimulate, 
         let transaction_errors = if let ConnectionCache::Quic(cache) = connection_cache {
             let tpu_client = TpuClient::new_with_connection_cache(
                 arc_rpc_client.clone(),
-                &env.wss_rpc_url,
+                &"wss://api.devnet.solana.com", // Hardcoded for Devnet
                 TpuClientConfig::default(),
                 cache,
             )
@@ -209,14 +209,14 @@ pub async fn create_and_send_swap_transaction(simulate_or_send: SendOrSimulate, 
 pub async fn create_ata_extendlut_transaction(chain: ChainType, simulate_or_send: SendOrSimulate, transaction_infos: SwapPathResult, lut_address: Pubkey, tokens: Vec<Pubkey>) -> Result<()> {
     info!("🔄 Create ATA/Extend LUT transaction.... ");
     
-    let env = Env::new();
+    let config = Config::load();
     let rpc_url = match chain {
-        ChainType::Mainnet => env.rpc_url_tx.clone(),
-        ChainType::Devnet => env.devnet_rpc_url.clone(),
+        ChainType::Mainnet => &config.rpc_url,
+        ChainType::Devnet => "https://api.devnet.solana.com",
     };
     let rpc_client = RpcClient::new(rpc_url);
 
-    let payer = read_keypair_file(&env.payer_keypair_path).expect("Wallet keypair file not found");
+    let payer: Keypair = read_keypair_file("~/.config/solana/id.json").expect("Wallet keypair not found");
     info!("💳 Wallet {:?}", payer.pubkey());
 
     let mut vec_pda_instructions: Vec<Instruction> = Vec::new();
@@ -330,7 +330,7 @@ pub async fn create_ata_extendlut_transaction(chain: ChainType, simulate_or_send
     vec_all_instructions[1] = compute_budget_ix;
 
     if simulate_or_send == SendOrSimulate::Send {
-        let transaction_config = RpcSendTransactionConfig {
+        let transaction_config: RpcSendTransactionConfig = RpcSendTransactionConfig {
             skip_preflight: false,
             preflight_commitment: Some(CommitmentLevel::Confirmed),
             encoding: Some(UiTransactionEncoding::Base58),
@@ -338,7 +338,7 @@ pub async fn create_ata_extendlut_transaction(chain: ChainType, simulate_or_send
             min_context_slot: None,
         };
  
-        let new_payer = read_keypair_file(&env.payer_keypair_path).expect("Wallet keypair not found");
+        let new_payer: Keypair = read_keypair_file("~/.config/solana/id.json").expect("Wallet keypair not found");
         let txn = VersionedTransaction::try_new(
             VersionedMessage::V0(v0::Message::try_compile(
                 &new_payer.pubkey(),
@@ -349,7 +349,7 @@ pub async fn create_ata_extendlut_transaction(chain: ChainType, simulate_or_send
             &[&new_payer],
         )?;
         
-        let non_blocking_rpc_client = solana_client::nonblocking::rpc_client::RpcClient::new(env.rpc_url_tx.clone());
+        let non_blocking_rpc_client = solana_client::nonblocking::rpc_client::RpcClient::new(rpc_url.to_string());
         let arc_rpc_client = Arc::new(non_blocking_rpc_client);
         let connection_cache = ConnectionCache::new_quic("connection_cache_cli_program_quic", 1);
         let signer: [Arc<dyn Signer>; 1] = [Arc::new(new_payer)];
@@ -358,7 +358,7 @@ pub async fn create_ata_extendlut_transaction(chain: ChainType, simulate_or_send
         let transaction_errors = if let ConnectionCache::Quic(cache) = connection_cache {
             let tpu_client = TpuClient::new_with_connection_cache(
                 arc_rpc_client.clone(),
-                &env.wss_rpc_url,
+                "wss://api.devnet.solana.com",
                 TpuClientConfig::default(),
                 cache,
             )
@@ -451,14 +451,14 @@ pub async fn construct_transaction(transaction_infos: SwapPathResult) -> Vec<Ins
 
 pub async fn create_lut(chain: ChainType) -> Result<()> {
     info!("🛠️ Create/Send LUT transaction...");
-    let env = Env::new();
+    let config = Config::load();
     let rpc_url = match chain {
-        ChainType::Mainnet => env.rpc_url.clone(),
-        ChainType::Devnet => env.devnet_rpc_url.clone(),
+        ChainType::Mainnet => config.rpc_url.clone(),
+        ChainType::Devnet => "https://api.devnet.solana.com".to_string(),
     };
     let rpc_client = RpcClient::new(rpc_url);
 
-    let payer = read_keypair_file(&env.payer_keypair_path).expect("Wallet keypair not found");
+    let payer = read_keypair_file("~/.config/solana/id.json").expect("Wallet keypair not found");
     let slot = rpc_client.get_slot_with_commitment(CommitmentConfig::finalized())?;
     let (create_instruction, lut_address) = create_lookup_table(payer.pubkey(), payer.pubkey(), slot - 200);
 
@@ -467,7 +467,7 @@ pub async fn create_lut(chain: ChainType) -> Result<()> {
             &payer.pubkey(),
             &[create_instruction],
             &[],
-            rpc_client.get_latest_blockhash_with_commitment(commitment_config)?.0,
+            rpc_client.get_latest_blockhash()?,
         )?),
         &[&payer],
     )?;
@@ -497,10 +497,10 @@ pub async fn create_lut(chain: ChainType) -> Result<()> {
 
 pub async fn is_available_lut(chain: ChainType, lut_address: Pubkey) -> Result<bool> {
     info!("🚚 Check if LUT address is available...");
-    let env = Env::new();
+    let config = Config::load();
     let rpc_url = match chain {
-        ChainType::Mainnet => env.rpc_url.clone(),
-        ChainType::Devnet => env.devnet_rpc_url.clone(),
+        ChainType::Mainnet => config.rpc_url.clone(),
+        ChainType::Devnet => "https://api.devnet.solana.com".to_string(),
     };
     let rpc_client = RpcClient::new(rpc_url);
 
